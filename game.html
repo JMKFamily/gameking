@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3-Match Defense: Endless Wave v7.1</title>
+    <style>
+        :root {
+            --board-size: 420px; --cell-size: 60px; --monster-size: 40px;
+            --color-bg: #1a1a1a; --color-grid: #333; --color-text: #f0f0f0;
+            --color-accent: #4a90e2; --color-monster: #4caf50; --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --color-danger: #e74c3c;
+        }
+        body {
+            background-color: var(--color-bg); color: var(--color-text); font-family: var(--font-main);
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+            margin: 0; flex-direction: column; gap: 20px;
+        }
+        #game-wrapper {
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+        }
+        #game-container {
+            position: relative; width: calc(var(--board-size) + var(--monster-size) * 2);
+            height: calc(var(--board-size) + var(--monster-size) * 2);
+        }
+        #game-container.shake { animation: screen-shake 0.5s ease-in-out; }
+        @keyframes screen-shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        #monster-area {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+        }
+        .monster {
+            position: absolute; width: var(--monster-size); height: var(--monster-size);
+            background-color: var(--color-monster); border-radius: 50%; display: flex;
+            justify-content: center; align-items: center; font-size: 14px; font-weight: bold; color: white;
+            border: 2px solid #fff; box-sizing: border-box; box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+            left: 0; top: 0; transform: translate(-50%, -50%); animation: move-around 20s linear infinite;
+        }
+        @keyframes move-around {
+            0% { transform: translate(0px, 0px); }
+            25% { transform: translate(calc(var(--board-size) + var(--monster-size)), 0px); }
+            50% { transform: translate(calc(var(--board-size) + var(--monster-size)), calc(var(--board-size) + var(--monster-size))); }
+            75% { transform: translate(0px, calc(var(--board-size) + var(--monster-size))); }
+            100% { transform: translate(0px, 0px); }
+        }
+        #game-board {
+            position: absolute; top: var(--monster-size); left: var(--monster-size);
+            width: var(--board-size); height: var(--board-size); display: grid;
+            grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(7, 1fr);
+            background-color: #222; border: 2px solid var(--color-grid); 
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            transition: box-shadow 0.5s ease-in-out;
+        }
+        #game-board.danger { animation: danger-border 1s ease-in-out infinite; }
+        @keyframes danger-border { 50% { box-shadow: 0 0 25px var(--color-danger); border-color: var(--color-danger); } }
+        .danger-text { color: var(--color-danger) !important; transform: scale(1.1); transition: color 0.3s, transform 0.3s; }
+
+        .cell {
+            width: var(--cell-size); height: var(--cell-size); box-sizing: border-box;
+            border: 1px solid var(--color-grid); cursor: grab;
+            transition: transform 0.2s ease, opacity 0.3s ease; border-radius: 8px;
+        }
+        .cell:active { cursor: grabbing; }
+        .cell.dragging { opacity: 0.5; }
+
+        .cell[data-type="0"] { background-color: #e74c3c; } .cell[data-type="1"] { background-color: #3498db; }
+        .cell[data-type="2"] { background-color: #f1c40f; } .cell[data-type="3"] { background-color: #27ae60; }
+        .cell[data-type="4"] { background-color: #8e44ad; } .cell[data-type="5"] { background-color: #f39c12; }
+        .cell[data-type="6"] { background-color: #16a085; }
+
+        .cell.matched { animation: pop 0.3s ease-out forwards; }
+        @keyframes pop { 100% { transform: scale(0); opacity: 0; } }
+        
+        .cell.hint-swap { animation: pulse 1s ease-in-out infinite alternate; }
+        .cell.hint-match { animation: glow 1s ease-in-out infinite alternate; }
+        @keyframes pulse { 100% { transform: scale(1.1); } }
+        @keyframes glow { 100% { box-shadow: 0 0 15px #ffff; } }
+
+        #hud {
+            display: flex; justify-content: space-around; width: var(--board-size);
+            background-color: #2a2a2a; padding: 10px; border-radius: 8px; font-size: 1.2em;
+        }
+        .hud-item { text-align: center; }
+        .hud-item span { font-weight: bold; color: var(--color-accent); transition: color 0.3s, transform 0.3s; }
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.8); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; z-index: 100; color: white;
+        }
+        .overlay h1 { font-size: 3em; margin-bottom: 20px; }
+        .overlay p { font-size: 1.2em; margin: 10px; }
+        /* --- 버그 수정: 시작/재시작 버튼 스타일 복구 --- */
+        .overlay button {
+            padding: 15px 30px; font-size: 1.2em; font-weight: bold; cursor: pointer;
+            background-color: var(--color-accent); border: none; color: white;
+            border-radius: 8px; transition: background-color 0.2s; margin-top: 20px;
+        }
+        .overlay button:hover { background-color: #3a80d2; }
+
+        #notification {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.7); color: white; padding: 20px 40px; border-radius: 10px;
+            font-size: 2em; font-weight: bold; z-index: 101; pointer-events: none; opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #notification.show { opacity: 1; }
+        .hidden { display: none; }
+        
+        #special-attack-container {
+            display: flex; align-items: center; gap: 15px;
+        }
+        #special-attack-button {
+            padding: 10px 25px; font-size: 1.1em; font-weight: bold; cursor: pointer;
+            background-color: var(--color-accent); border: none; color: white;
+            border-radius: 8px; transition: background-color 0.2s, opacity 0.2s;
+        }
+        #special-attack-button:disabled {
+            background-color: #555; opacity: 0.6; cursor: not-allowed;
+        }
+        #special-attack-button:not(:disabled):hover { background-color: #3a80d2; }
+        #kill-count-display { font-size: 1.1em; font-weight: bold; color: var(--color-accent); }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <div id="hud">
+            <div class="hud-item">Stage: <span id="stage-display">1</span></div>
+            <div class="hud-item">Monsters: <span id="monster-count-display">0</span></div>
+            <div class="hud-item">Score: <span id="score-display">0</span></div>
+            <div class="hud-item">Timer: <span id="timer-display">10</span></div>
+        </div>
+        <div id="game-container">
+            <div id="monster-area"></div>
+            <div id="game-board"></div>
+            <div id="notification"></div>
+            <div id="start-screen" class="overlay">
+                <h1>3-Match Defense</h1>
+                <p>몬스터가 20마리가 되기 전에 최대한 많이 처치하세요!</p>
+                <button id="start-game-button">게임 시작</button>
+            </div>
+            <div id="game-over-screen" class="overlay hidden">
+                <h1>Game Over</h1>
+                <p>Final Score: <span id="final-score">0</span></p>
+                <button id="restart-game-button">다시 시작</button>
+            </div>
+        </div>
+        <div id="special-attack-container">
+            <button id="special-attack-button" disabled>필살기 (<span id="special-attack-charges">0</span>)</button>
+            <span id="kill-count-display">0/10</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const BOARD_SIZE = 7;
+            const NUM_PIECE_TYPES = 7;
+            const GAME_STATE = { MENU: 'menu', PREPARATION: 'preparation', ACTIVE: 'active', OVER: 'over' };
+            
+            let state = {
+                gameState: GAME_STATE.MENU, currentStage: 1, score: 0, board: [], activeMonsters: [],
+                monsterIdCounter: 0, isSwapping: false,
+                timers: { main: null, prepSeconds: 10, waveSeconds: 60, spawnSeconds: 2, idleSeconds: 0, hintTimeout: null },
+                spawnedMonsterCount: 0, draggedCell: null, hintCells: [],
+                specialAttackCharges: 0, killsForNextCharge: 0
+            };
+
+            const gameContainer = document.getElementById('game-container');
+            const boardElement = document.getElementById('game-board');
+            const monsterAreaElement = document.getElementById('monster-area');
+            const notificationElement = document.getElementById('notification');
+            const displays = { stage: document.getElementById('stage-display'), monsters: document.getElementById('monster-count-display'), score: document.getElementById('score-display'), timer: document.getElementById('timer-display'), finalScore: document.getElementById('final-score'), specialAttackCharges: document.getElementById('special-attack-charges'), killCount: document.getElementById('kill-count-display') };
+            const screens = { start: document.getElementById('start-screen'), over: document.getElementById('game-over-screen') };
+            const buttons = { start: document.getElementById('start-game-button'), restart: document.getElementById('restart-game-button'), specialAttack: document.getElementById('special-attack-button') };
+
+            function showNotification(text, duration = 1500) {
+                notificationElement.textContent = text;
+                notificationElement.classList.add('show');
+                setTimeout(() => notificationElement.classList.remove('show'), duration);
+            }
+
+            function updateGameState(newState) {
+                state.gameState = newState;
+                screens.start.classList.add('hidden');
+                screens.over.classList.add('hidden');
+                boardElement.style.pointerEvents = 'none';
+                clearTimeout(state.timers.hintTimeout); clearHint();
+                switch (newState) {
+                    case GAME_STATE.MENU: screens.start.classList.remove('hidden'); break;
+                    case GAME_STATE.PREPARATION: startPreparationPhase(); break;
+                    case GAME_STATE.ACTIVE: boardElement.style.pointerEvents = 'auto'; startStagePhase(); break;
+                    case GAME_STATE.OVER:
+                        clearInterval(state.timers.main);
+                        displays.finalScore.textContent = state.score;
+                        screens.over.classList.remove('hidden');
+                        break;
+                }
+            }
+
+            function startGame() {
+                state.currentStage = 1; state.score = 0; monsterAreaElement.innerHTML = '';
+                state.activeMonsters = []; state.monsterIdCounter = 0; displays.score.textContent = state.score;
+                state.specialAttackCharges = 0; state.killsForNextCharge = 0;
+                updateSpecialAttackButton();
+                updateDangerEffect();
+                updateGameState(GAME_STATE.PREPARATION);
+            }
+
+            function startPreparationPhase() {
+                state.timers.prepSeconds = 10;
+                displays.stage.textContent = state.currentStage;
+                displays.timer.textContent = state.timers.prepSeconds;
+                initializeBoard();
+                renderBoard();
+                clearInterval(state.timers.main);
+                state.timers.main = setInterval(() => {
+                    state.timers.prepSeconds--;
+                    displays.timer.textContent = state.timers.prepSeconds;
+                    if (state.timers.prepSeconds <= 0) updateGameState(GAME_STATE.ACTIVE);
+                }, 1000);
+            }
+            
+            function startStagePhase() { goToNextStage(true); }
+
+            function gameLoop() {
+                state.timers.waveSeconds--;
+                displays.timer.textContent = state.timers.waveSeconds;
+                if (state.timers.waveSeconds <= 0) { goToNextStage(); return; }
+                if (state.spawnedMonsterCount < 10) {
+                    state.timers.spawnSeconds--;
+                    if (state.timers.spawnSeconds <= 0) {
+                        state.timers.spawnSeconds = 2; spawnMonster(); state.spawnedMonsterCount++;
+                    }
+                }
+                if (!state.isSwapping) {
+                    state.timers.idleSeconds++;
+                    if (state.timers.idleSeconds >= 5 && state.hintCells.length === 0 && !state.timers.hintTimeout) {
+                        state.timers.hintTimeout = setTimeout(showHint, 1000);
+                    }
+                }
+            }
+
+            function goToNextStage(isFirstStage = false) {
+                if (!isFirstStage) state.currentStage++;
+                showNotification(`Stage ${state.currentStage} 시작!`);
+                displays.stage.textContent = state.currentStage;
+                state.spawnedMonsterCount = 0;
+                state.timers.waveSeconds = 60;
+                state.timers.spawnSeconds = 2;
+                displays.timer.textContent = state.timers.waveSeconds;
+                if (isFirstStage) {
+                    clearInterval(state.timers.main);
+                    state.timers.main = setInterval(gameLoop, 1000);
+                }
+            }
+
+            function spawnMonster() {
+                if (state.gameState === GAME_STATE.OVER) return;
+                state.monsterIdCounter++;
+                let hp;
+                if (state.spawnedMonsterCount < 5) {
+                    hp = state.currentStage;
+                } else {
+                    hp = Math.max(1, Math.floor(Math.random() * state.currentStage) + 1);
+                }
+                const monster = { id: state.monsterIdCounter, hp: hp, maxHp: hp, element: document.createElement('div') };
+                monster.element.className = 'monster'; monster.element.textContent = hp;
+                monster.element.style.animationDelay = `-${Math.random() * 20}s`;
+                state.activeMonsters.push(monster);
+                monsterAreaElement.appendChild(monster.element);
+                displays.monsters.textContent = state.activeMonsters.length;
+                updateDangerEffect();
+                if (state.activeMonsters.length >= 20) {
+                    updateGameState(GAME_STATE.OVER);
+                }
+            }
+            
+            function updateDangerEffect() {
+                const monsterCount = state.activeMonsters.length;
+                if (monsterCount >= 16) {
+                    boardElement.classList.add('danger');
+                    displays.monsters.classList.add('danger-text');
+                } else {
+                    boardElement.classList.remove('danger');
+                    displays.monsters.classList.remove('danger-text');
+                }
+            }
+            
+            function updateSpecialAttackButton() {
+                displays.specialAttackCharges.textContent = state.specialAttackCharges;
+                displays.killCount.textContent = `${state.killsForNextCharge}/10`;
+                buttons.specialAttack.disabled = state.specialAttackCharges <= 0;
+            }
+
+            function useSpecialAttack() {
+                if (state.specialAttackCharges <= 0 || state.isSwapping) return;
+                state.specialAttackCharges--;
+                updateSpecialAttackButton();
+
+                gameContainer.classList.add('shake');
+                setTimeout(() => gameContainer.classList.remove('shake'), 500);
+
+                [...state.activeMonsters].forEach(monster => takeDamage(monster, 1));
+            }
+
+            function getMatchChains(board) {
+                const matches = [];
+                const checkMatch = (x, y, dx, dy) => {
+                    const type = board?.[y]?.[x];
+                    if (type === undefined || type === null) return [];
+                    const chain = [{ x, y }];
+                    for (let i = 1; ; i++) {
+                        const nx = x + dx * i;
+                        const ny = y + dy * i;
+                        if (board?.[ny]?.[nx] === type) {
+                            chain.push({ x: nx, y: ny });
+                        } else {
+                            break;
+                        }
+                    }
+                    return chain.length >= 3 ? chain : [];
+                };
+                for (let y = 0; y < BOARD_SIZE; y++) {
+                    for (let x = 0; x < BOARD_SIZE; x++) {
+                        const horizontal = checkMatch(x, y, 1, 0);
+                        if (horizontal.length >= 3) matches.push(horizontal);
+                        const vertical = checkMatch(x, y, 0, 1);
+                        if (vertical.length >= 3) matches.push(vertical);
+                    }
+                }
+                const uniqueMatches = []; const matchedCoords = new Set();
+                for (const match of matches) {
+                    const isNewMatch = match.some(p => !matchedCoords.has(`${p.x},${p.y}`));
+                    if (isNewMatch) {
+                        uniqueMatches.push(match);
+                        match.forEach(p => matchedCoords.add(`${p.x},${p.y}`));
+                    }
+                }
+                return uniqueMatches;
+            }
+
+            function evaluateMove(x1, y1, x2, y2) {
+                const tempBoard = state.board.map(r => [...r]);
+                if (tempBoard?.[y1]?.[x1] !== undefined && tempBoard?.[y2]?.[x2] !== undefined) {
+                    [tempBoard[y1][x1], tempBoard[y2][x2]] = [tempBoard[y2][x2], tempBoard[y1][x1]];
+                }
+                const matches = getMatchChains(tempBoard);
+                let score = 0; let matchedPieces = [];
+                matches.forEach(match => {
+                    score += match.length * match.length;
+                    matchedPieces.push(...match);
+                });
+                return { score, matchedPieces: matchedPieces.filter((v, i, a) => a.findIndex(t => (t.x === v.x && t.y === v.y)) === i) };
+            }
+
+            function findAHint() {
+                let bestMove = { score: 0, swapCells: null, matchCells: [] };
+                for (let y = 0; y < BOARD_SIZE; y++) {
+                    for (let x = 0; x < BOARD_SIZE; x++) {
+                        const checkAndRecord = (nx, ny) => {
+                            const res = evaluateMove(x, y, nx, ny);
+                            if (res.score > bestMove.score) {
+                                bestMove = { score: res.score, swapCells: [{ x, y }, { x: nx, y: ny }], matchCells: res.matchedPieces };
+                            }
+                        };
+                        if (x < BOARD_SIZE - 1) checkAndRecord(x + 1, y);
+                        if (y < BOARD_SIZE - 1) checkAndRecord(x, y + 1);
+                    }
+                }
+                return bestMove;
+            }
+
+            function showHint() {
+                clearHint();
+                const hint = findAHint();
+                if (hint?.swapCells && hint.matchCells.length > 0) {
+                    hint.swapCells.forEach(cellPos => {
+                        const el = document.querySelector(`.cell[data-x='${cellPos.x}'][data-y='${cellPos.y}']`);
+                        el?.classList.add('hint-swap');
+                        state.hintCells.push(el);
+                    });
+                    state.timers.hintTimeout = setTimeout(() => {
+                        hint.matchCells.forEach(cellPos => {
+                            const el = document.querySelector(`.cell[data-x='${cellPos.x}'][data-y='${cellPos.y}']`);
+                            el?.classList.add('hint-match');
+                            state.hintCells.push(el);
+                        });
+                    }, 750);
+                }
+            }
+            function clearHint() {
+                state.hintCells.forEach(cell => {
+                    cell?.classList.remove('hint-swap');
+                    cell?.classList.remove('hint-match');
+                });
+                state.hintCells = [];
+                state.timers.idleSeconds = 0;
+                clearTimeout(state.timers.hintTimeout); state.timers.hintTimeout = null;
+            }
+
+            async function shuffleBoard() {
+                state.isSwapping = true; clearHint();
+                showNotification("매치 가능한 블록이 없습니다! 셔플!", 2000);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                initializeBoard(); renderBoard(); state.isSwapping = false;
+            }
+
+            function checkForPossibleMoves() { return findAHint().score > 0; }
+
+            function initializeBoard() {
+                const create = () => Array.from({length: BOARD_SIZE}, () => Array.from({length: BOARD_SIZE}, getRandomPieceType));
+                const hasMatches = (b) => getMatchChains(b).length > 0;
+                do { state.board = create(); } while (hasMatches(state.board));
+                if (state.gameState === GAME_STATE.ACTIVE && !checkForPossibleMoves()) setTimeout(shuffleBoard, 500);
+            }
+            
+            function renderBoard() {
+                boardElement.innerHTML = '';
+                state.board.forEach((row, y) => row.forEach((type, x) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell'; cell.dataset.x = x; cell.dataset.y = y;
+                    cell.dataset.type = type; cell.draggable = true;
+                    boardElement.appendChild(cell);
+                }));
+            }
+            
+            async function swapPieces(x1, y1, x2, y2) {
+                if (state.isSwapping) return;
+                state.isSwapping = true; clearHint();
+                const tempBoard = state.board.map(r => [...r]);
+                [tempBoard[y1][x1], tempBoard[y2][x2]] = [tempBoard[y2][x2], tempBoard[y1][x1]];
+                const matches = getMatchChains(tempBoard);
+                if (matches.length > 0) {
+                    state.board = tempBoard;
+                    const c1 = document.querySelector(`.cell[data-x='${x1}'][data-y='${y1}']`);
+                    const c2 = document.querySelector(`.cell[data-x='${x2}'][data-y='${y2}']`);
+                    [c1.dataset.type, c2.dataset.type] = [c2.dataset.type, c1.dataset.type];
+                    await new Promise(r => setTimeout(r, 100));
+                    await processMatches(matches);
+                }
+                state.isSwapping = false;
+            }
+
+            async function processMatches(initialMatches) {
+                let currentMatches = initialMatches;
+                while (currentMatches.length > 0) {
+                    let totalMatchedPieces = new Set();
+                    currentMatches.forEach(match => match.forEach(p => totalMatchedPieces.add(`${p.x},${p.y}`)));
+                    applyMatchDamage(totalMatchedPieces.size);
+                    totalMatchedPieces.forEach(coordStr => {
+                        const [x, y] = coordStr.split(',');
+                        document.querySelector(`.cell[data-x='${x}'][data-y='${y}']`)?.classList.add('matched');
+                        state.board[y][x] = null;
+                    });
+                    await new Promise(r => setTimeout(r, 300));
+                    applyGravity();
+                    fillBoard();
+                    renderBoard();
+                    await new Promise(r => setTimeout(r, 300));
+                    currentMatches = getMatchChains(state.board);
+                }
+                if (!checkForPossibleMoves()) shuffleBoard();
+            }
+            
+            function applyGravity() {
+                for(let x=0; x<BOARD_SIZE; x++){ let empty=BOARD_SIZE-1; for(let y=BOARD_SIZE-1; y>=0; y--){
+                if(state.board[y][x]!==null){ if(y!==empty){[state.board[empty][x],state.board[y][x]]=[state.board[y][x],null];} empty--; } } }
+            }
+            function fillBoard() { for (let y=0;y<BOARD_SIZE;y++) for(let x=0;x<BOARD_SIZE;x++) if(state.board[y][x]===null) state.board[y][x]=getRandomPieceType(); }
+            
+            function applyMatchDamage(count) {
+                let damage=0; if (count===3) damage=1; else if (count===4) damage=2; else if (count>=5) damage=4;
+                if (damage>0 && state.activeMonsters.length>0) takeDamage(state.activeMonsters[0], damage);
+            }
+
+            function takeDamage(monster, damage) {
+                monster.hp -= damage;
+                if (monster.hp <= 0) {
+                    monster.element.remove();
+                    state.activeMonsters = state.activeMonsters.filter(m => m.id !== monster.id);
+                    state.score++;
+                    state.killsForNextCharge++;
+                    if (state.killsForNextCharge >= 10) {
+                        state.specialAttackCharges++;
+                        state.killsForNextCharge -= 10;
+                    }
+                    updateSpecialAttackButton();
+                    displays.score.textContent = state.score;
+                    displays.monsters.textContent = state.activeMonsters.length;
+                    updateDangerEffect();
+                    if (state.activeMonsters.length === 0 && state.spawnedMonsterCount >= 10) {
+                        goToNextStage();
+                    }
+                } else {
+                    monster.element.textContent = monster.hp;
+                    const healthPercent = Math.max(0, monster.hp / monster.maxHp);
+                    monster.element.style.backgroundColor = `hsl(120, 100%, ${20 + healthPercent * 30}%)`;
+                }
+            }
+            
+            function getRandomPieceType() { return Math.floor(Math.random() * NUM_PIECE_TYPES); }
+
+            boardElement.addEventListener('dragstart', (e) => {
+                if(state.gameState!==GAME_STATE.ACTIVE || state.isSwapping || !e.target.classList.contains('cell')) return;
+                clearHint(); state.draggedCell = e.target; setTimeout(() => e.target.classList.add('dragging'), 0);
+            });
+            boardElement.addEventListener('dragend', (e) => {
+                if (!state.draggedCell) return;
+                state.draggedCell.classList.remove('dragging'); state.draggedCell = null;
+            });
+            boardElement.addEventListener('dragover', (e) => e.preventDefault());
+            boardElement.addEventListener('drop', (e) => {
+                e.preventDefault(); const droppedOnCell = e.target.closest('.cell');
+                if (!state.draggedCell || !droppedOnCell || droppedOnCell === state.draggedCell || state.isSwapping) return;
+                const x1=parseInt(state.draggedCell.dataset.x), y1=parseInt(state.draggedCell.dataset.y);
+                const x2=parseInt(droppedOnCell.dataset.x), y2=parseInt(droppedOnCell.dataset.y);
+                if (Math.abs(x1-x2)+Math.abs(y1-y2) === 1) swapPieces(x1, y1, x2, y2);
+            });
+
+            buttons.start.addEventListener('click', startGame);
+            buttons.restart.addEventListener('click', startGame);
+            buttons.specialAttack.addEventListener('click', useSpecialAttack);
+            document.getElementById('timer-display').addEventListener('click', () => {
+                 if(state.gameState === GAME_STATE.PREPARATION) { updateGameState(GAME_STATE.ACTIVE); }
+            });
+            updateGameState(GAME_STATE.MENU);
+        });
+    </script>
+</body>
+</html>
