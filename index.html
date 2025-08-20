@@ -3,18 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3-Match Defense: Endless Wave v7.1</title>
+    <title>Enhanced 3-Match Defense v2.0</title>
     <style>
         :root {
             --board-size: 420px; --cell-size: 60px; --monster-size: 40px;
-            --color-bg: #1a1a1a; --color-grid: #333; --color-text: #f0f0f0;
+            --color-bg: #0f0f23; --color-grid: #333; --color-text: #f0f0f0;
             --color-accent: #4a90e2; --color-monster: #4caf50; --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            --color-danger: #e74c3c;
+            --color-danger: #e74c3c; --color-gold: #ffd700;
         }
         body {
-            background-color: var(--color-bg); color: var(--color-text); font-family: var(--font-main);
-            display: flex; justify-content: center; align-items: center; height: 100vh;
-            margin: 0; flex-direction: column; gap: 20px;
+            background: linear-gradient(135deg, var(--color-bg) 0%, #1a1a3a 100%);
+            color: var(--color-text); font-family: var(--font-main);
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            margin: 0; flex-direction: column; gap: 20px; overflow-x: auto;
         }
         #game-wrapper {
             display: flex; flex-direction: column; align-items: center; gap: 15px;
@@ -34,11 +35,22 @@
         }
         .monster {
             position: absolute; width: var(--monster-size); height: var(--monster-size);
-            background-color: var(--color-monster); border-radius: 50%; display: flex;
-            justify-content: center; align-items: center; font-size: 14px; font-weight: bold; color: white;
-            border: 2px solid #fff; box-sizing: border-box; box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
-            left: 0; top: 0; transform: translate(-50%, -50%); animation: move-around 20s linear infinite;
+            border-radius: 50%; display: flex; justify-content: center; align-items: center; 
+            font-size: 12px; font-weight: bold; color: white;
+            border: 2px solid #fff; box-sizing: border-box; cursor: pointer; pointer-events: auto;
+            left: 0; top: 0; transform: translate(-50%, -50%); 
+            transition: all 0.3s ease; z-index: 10;
         }
+        .monster.normal { background-color: var(--color-monster); animation: move-around 20s linear infinite; }
+        .monster.fast { background-color: #ff6b35; animation: move-around 12s linear infinite; }
+        .monster.tank { background-color: #8b4513; animation: move-around 30s linear infinite; transform: scale(1.2) translate(-42%, -42%); }
+        .monster.flying { background-color: #9b59b6; animation: move-diagonal 15s linear infinite; }
+        .monster.targeted { 
+            box-shadow: 0 0 20px var(--color-gold), 0 0 30px var(--color-gold);
+            transform: scale(1.1) translate(-45%, -45%);
+        }
+        .monster:hover { transform: scale(1.15) translate(-43%, -43%); }
+        
         @keyframes move-around {
             0% { transform: translate(0px, 0px); }
             25% { transform: translate(calc(var(--board-size) + var(--monster-size)), 0px); }
@@ -46,11 +58,17 @@
             75% { transform: translate(0px, calc(var(--board-size) + var(--monster-size))); }
             100% { transform: translate(0px, 0px); }
         }
+        @keyframes move-diagonal {
+            0%, 100% { transform: translate(20px, 20px); }
+            50% { transform: translate(calc(var(--board-size) + 20px), calc(var(--board-size) + 20px)); }
+        }
+
         #game-board {
             position: absolute; top: var(--monster-size); left: var(--monster-size);
             width: var(--board-size); height: var(--board-size); display: grid;
             grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(7, 1fr);
-            background-color: #222; border: 2px solid var(--color-grid); 
+            background: linear-gradient(45deg, #222 0%, #2a2a2a 100%); 
+            border: 2px solid var(--color-grid); border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             transition: box-shadow 0.5s ease-in-out;
         }
@@ -60,68 +78,222 @@
 
         .cell {
             width: var(--cell-size); height: var(--cell-size); box-sizing: border-box;
-            border: 1px solid var(--color-grid); cursor: grab;
-            transition: transform 0.2s ease, opacity 0.3s ease; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1); cursor: grab; position: relative;
+            transition: transform 0.2s ease, opacity 0.3s ease, box-shadow 0.3s ease; 
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
         }
         .cell:active { cursor: grabbing; }
-        .cell.dragging { opacity: 0.5; }
+        .cell.dragging { opacity: 0.5; transform: scale(0.9); }
 
-        .cell[data-type="0"] { background-color: #e74c3c; } .cell[data-type="1"] { background-color: #3498db; }
-        .cell[data-type="2"] { background-color: #f1c40f; } .cell[data-type="3"] { background-color: #27ae60; }
-        .cell[data-type="4"] { background-color: #8e44ad; } .cell[data-type="5"] { background-color: #f39c12; }
-        .cell[data-type="6"] { background-color: #16a085; }
+        /* Basic piece colors */
+        .cell[data-type="0"] { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .cell[data-type="1"] { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .cell[data-type="2"] { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+        .cell[data-type="3"] { background: linear-gradient(135deg, #27ae60, #229954); }
+        .cell[data-type="4"] { background: linear-gradient(135deg, #8e44ad, #7d3c98); }
+        .cell[data-type="5"] { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .cell[data-type="6"] { background: linear-gradient(135deg, #16a085, #138d75); }
 
-        .cell.matched { animation: pop 0.3s ease-out forwards; }
-        @keyframes pop { 100% { transform: scale(0); opacity: 0; } }
+        /* Special pieces */
+        .cell[data-type="bomb"] { 
+            background: radial-gradient(circle, #2c3e50, #34495e); 
+            box-shadow: inset 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+        .cell[data-type="bomb"]:after { 
+            content: '💣'; font-size: 24px; position: absolute;
+        }
+        .cell[data-type="lightning"] { 
+            background: radial-gradient(circle, #9b59b6, #8e44ad);
+            box-shadow: 0 0 15px rgba(155, 89, 182, 0.7);
+        }
+        .cell[data-type="lightning"]:after { 
+            content: '⚡'; font-size: 24px; position: absolute;
+        }
+        .cell[data-type="rainbow"] { 
+            background: conic-gradient(from 0deg, #e74c3c, #f39c12, #f1c40f, #27ae60, #3498db, #8e44ad, #e74c3c);
+            animation: rainbow-spin 3s linear infinite;
+        }
+        .cell[data-type="rainbow"]:after { 
+            content: '🌟'; font-size: 20px; position: absolute;
+        }
+        @keyframes rainbow-spin { 100% { transform: rotate(360deg); } }
+
+        .cell.matched { animation: pop-enhanced 0.5s ease-out forwards; }
+        @keyframes pop-enhanced { 
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); box-shadow: 0 0 20px currentColor; }
+            100% { transform: scale(0); opacity: 0; }
+        }
         
-        .cell.hint-swap { animation: pulse 1s ease-in-out infinite alternate; }
-        .cell.hint-match { animation: glow 1s ease-in-out infinite alternate; }
-        @keyframes pulse { 100% { transform: scale(1.1); } }
-        @keyframes glow { 100% { box-shadow: 0 0 15px #ffff; } }
+        .cell.hint-swap { animation: pulse-glow 1s ease-in-out infinite alternate; }
+        .cell.hint-match { animation: match-glow 1s ease-in-out infinite alternate; }
+        @keyframes pulse-glow { 100% { transform: scale(1.1); box-shadow: 0 0 20px #fff; } }
+        @keyframes match-glow { 100% { box-shadow: 0 0 25px var(--color-gold); } }
+
+        /* Combo indicator */
+        .combo-indicator {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            font-size: 2em; font-weight: bold; color: var(--color-gold);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 100;
+            animation: combo-bounce 0.5s ease-out; pointer-events: none;
+        }
+        @keyframes combo-bounce {
+            0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+            50% { transform: translateX(-50%) scale(1.2); }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
 
         #hud {
             display: flex; justify-content: space-around; width: var(--board-size);
-            background-color: #2a2a2a; padding: 10px; border-radius: 8px; font-size: 1.2em;
+            background: linear-gradient(135deg, #2a2a2a, #3a3a3a); 
+            padding: 15px; border-radius: 12px; font-size: 1.2em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .hud-item { text-align: center; }
-        .hud-item span { font-weight: bold; color: var(--color-accent); transition: color 0.3s, transform 0.3s; }
+        .hud-item span { font-weight: bold; color: var(--color-accent); transition: all 0.3s; }
+        
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.8); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center; z-index: 100; color: white;
+            background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(26,26,58,0.9));
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            text-align: center; z-index: 100; color: white; border-radius: 10px;
         }
-        .overlay h1 { font-size: 3em; margin-bottom: 20px; }
+        .overlay h1 { font-size: 3em; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
         .overlay p { font-size: 1.2em; margin: 10px; }
-        /* --- 버그 수정: 시작/재시작 버튼 스타일 복구 --- */
         .overlay button {
             padding: 15px 30px; font-size: 1.2em; font-weight: bold; cursor: pointer;
-            background-color: var(--color-accent); border: none; color: white;
-            border-radius: 8px; transition: background-color 0.2s; margin-top: 20px;
+            background: linear-gradient(135deg, var(--color-accent), #3a80d2); 
+            border: none; color: white; border-radius: 8px; 
+            transition: all 0.3s; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        .overlay button:hover { background-color: #3a80d2; }
+        .overlay button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
 
         #notification {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background-color: rgba(0,0,0,0.7); color: white; padding: 20px 40px; border-radius: 10px;
-            font-size: 2em; font-weight: bold; z-index: 101; pointer-events: none; opacity: 0;
-            transition: opacity 0.5s ease-in-out;
+            background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(74,144,226,0.2));
+            color: white; padding: 20px 40px; border-radius: 15px; font-size: 2em; font-weight: bold; 
+            z-index: 101; pointer-events: none; opacity: 0; transition: all 0.5s ease;
+            border: 2px solid var(--color-accent); box-shadow: 0 0 30px rgba(74,144,226,0.5);
         }
-        #notification.show { opacity: 1; }
+        #notification.show { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
         .hidden { display: none; }
         
-        #special-attack-container {
-            display: flex; align-items: center; gap: 15px;
+        #controls {
+            display: flex; gap: 15px; align-items: center; flex-wrap: wrap; justify-content: center;
         }
-        #special-attack-button {
-            padding: 10px 25px; font-size: 1.1em; font-weight: bold; cursor: pointer;
-            background-color: var(--color-accent); border: none; color: white;
-            border-radius: 8px; transition: background-color 0.2s, opacity 0.2s;
+        .control-group {
+            display: flex; align-items: center; gap: 10px; 
+            background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+            padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
-        #special-attack-button:disabled {
-            background-color: #555; opacity: 0.6; cursor: not-allowed;
+        #special-attack-button, #target-button {
+            padding: 10px 20px; font-size: 1em; font-weight: bold; cursor: pointer;
+            background: linear-gradient(135deg, var(--color-accent), #3a80d2);
+            border: none; color: white; border-radius: 6px; transition: all 0.3s;
         }
-        #special-attack-button:not(:disabled):hover { background-color: #3a80d2; }
-        #kill-count-display { font-size: 1.1em; font-weight: bold; color: var(--color-accent); }
+        #special-attack-button:disabled, #target-button:disabled {
+            background: linear-gradient(135deg, #555, #666); opacity: 0.6; cursor: not-allowed;
+        }
+        #special-attack-button:not(:disabled):hover, #target-button:not(:disabled):hover { 
+            transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+        }
+        .stat-display { 
+            font-size: 1em; font-weight: bold; color: var(--color-accent); 
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Damage indicator */
+        .damage-indicator {
+            position: absolute; font-size: 1.5em; font-weight: bold; color: #ff4444;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 50; pointer-events: none;
+            animation: damage-float 1s ease-out forwards;
+        }
+        @keyframes damage-float {
+            0% { transform: translateY(0) scale(0.8); opacity: 0; }
+            30% { transform: translateY(-20px) scale(1.2); opacity: 1; }
+            100% { transform: translateY(-60px) scale(1); opacity: 0; }
+        }
+
+        /* Touch interaction styles */
+        .cell.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px var(--color-gold), 0 0 30px var(--color-gold);
+            border: 3px solid var(--color-gold);
+            z-index: 20;
+            position: relative;
+        }
+
+        .cell.possible-swap {
+            animation: possible-swap 1s ease-in-out infinite;
+            border: 2px solid #00ff00;
+        }
+
+        @keyframes possible-swap {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 0, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(0, 255, 0, 0.8); }
+        }
+
+        /* Mobile-specific UI */
+        #mobile-instructions {
+            display: none;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        .swap-indicator {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--color-gold);
+            color: black;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 30;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            :root { --board-size: 350px; --cell-size: 50px; --monster-size: 35px; }
+            .overlay h1 { font-size: 2.5em; }
+            #hud { font-size: 1em; padding: 10px; flex-wrap: wrap; gap: 5px; }
+            #controls { gap: 8px; flex-wrap: wrap; }
+            .control-group { padding: 6px 10px; font-size: 0.9em; }
+            .hud-item { min-width: 70px; }
+            #mobile-instructions { display: block; }
+            
+            /* 모바일에서 버튼 크기 증가 */
+            #special-attack-button, #target-button {
+                padding: 12px 16px;
+                font-size: 0.9em;
+                min-width: 120px;
+            }
+            
+            /* 몬스터 클릭 영역 확대 */
+            .monster {
+                min-width: 45px;
+                min-height: 45px;
+                touch-action: manipulation;
+            }
+        }
+
+        @media (max-width: 480px) {
+            :root { --board-size: 315px; --cell-size: 45px; --monster-size: 32px; }
+            body { gap: 10px; padding: 10px 5px; }
+            .overlay h1 { font-size: 2em; }
+            #hud { font-size: 0.9em; padding: 8px; }
+            .control-group { padding: 5px 8px; }
+        }
     </style>
 </head>
 <body>
@@ -131,25 +303,41 @@
             <div class="hud-item">Monsters: <span id="monster-count-display">0</span></div>
             <div class="hud-item">Score: <span id="score-display">0</span></div>
             <div class="hud-item">Timer: <span id="timer-display">10</span></div>
+            <div class="hud-item">Combo: <span id="combo-display">0</span>x</div>
         </div>
+        
         <div id="game-container">
             <div id="monster-area"></div>
             <div id="game-board"></div>
             <div id="notification"></div>
             <div id="start-screen" class="overlay">
-                <h1>3-Match Defense</h1>
-                <p>몬스터가 20마리가 되기 전에 최대한 많이 처치하세요!</p>
-                <button id="start-game-button">게임 시작</button>
+                <h1>🛡️ Enhanced Defense</h1>
+                <p>새로운 기능들:</p>
+                <p>• 다양한 몬스터 타입 (일반, 빠른, 탱크, 공중)</p>
+                <p>• 특수 블록들 (폭탄, 번개, 무지개)</p>
+                <p>• 몬스터 타겟팅 시스템</p>
+                <p>• 콤보 시스템으로 추가 데미지</p>
+                <button id="start-game-button">🎮 게임 시작</button>
             </div>
             <div id="game-over-screen" class="overlay hidden">
                 <h1>Game Over</h1>
                 <p>Final Score: <span id="final-score">0</span></p>
+                <p>Max Combo: <span id="max-combo">0</span>x</p>
                 <button id="restart-game-button">다시 시작</button>
             </div>
         </div>
-        <div id="special-attack-container">
-            <button id="special-attack-button" disabled>필살기 (<span id="special-attack-charges">0</span>)</button>
-            <span id="kill-count-display">0/10</span>
+        
+        <div id="controls">
+            <div class="control-group">
+                <button id="special-attack-button" disabled>💥 필살기 (<span id="special-attack-charges">0</span>)</button>
+                <span id="kill-count-display" class="stat-display">0/10</span>
+            </div>
+            <div class="control-group">
+                <button id="target-button">🎯 타겟: <span id="target-mode">첫번째</span></button>
+            </div>
+            <div class="control-group">
+                <span class="stat-display">DPS: <span id="dps-display">0</span></span>
+            </div>
         </div>
     </div>
 
@@ -158,22 +346,51 @@
             const BOARD_SIZE = 7;
             const NUM_PIECE_TYPES = 7;
             const GAME_STATE = { MENU: 'menu', PREPARATION: 'preparation', ACTIVE: 'active', OVER: 'over' };
+            const MONSTER_TYPES = {
+                NORMAL: { hp: 1, speed: 20, color: '#4caf50', emoji: '👹' },
+                FAST: { hp: 1, speed: 12, color: '#ff6b35', emoji: '💨' },
+                TANK: { hp: 3, speed: 30, color: '#8b4513', emoji: '🛡️' },
+                FLYING: { hp: 2, speed: 15, color: '#9b59b6', emoji: '🦇' }
+            };
+            const TARGET_MODES = ['첫번째', '막체력', '최체력', '랜덤'];
             
             let state = {
                 gameState: GAME_STATE.MENU, currentStage: 1, score: 0, board: [], activeMonsters: [],
-                monsterIdCounter: 0, isSwapping: false,
+                monsterIdCounter: 0, isSwapping: false, targetMode: 0, comboCount: 0, maxCombo: 0,
                 timers: { main: null, prepSeconds: 10, waveSeconds: 60, spawnSeconds: 2, idleSeconds: 0, hintTimeout: null },
-                spawnedMonsterCount: 0, draggedCell: null, hintCells: [],
-                specialAttackCharges: 0, killsForNextCharge: 0
+                spawnedMonsterCount: 0, draggedCell: null, hintCells: [], totalDamageDealt: 0, gameStartTime: 0,
+                specialAttackCharges: 0, killsForNextCharge: 0, targetedMonster: null,
+                // 터치 관련 상태
+                selectedCell: null, possibleSwaps: [], isTouchDevice: false
             };
+
+            // 터치 디바이스 감지
+            state.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
 
             const gameContainer = document.getElementById('game-container');
             const boardElement = document.getElementById('game-board');
             const monsterAreaElement = document.getElementById('monster-area');
             const notificationElement = document.getElementById('notification');
-            const displays = { stage: document.getElementById('stage-display'), monsters: document.getElementById('monster-count-display'), score: document.getElementById('score-display'), timer: document.getElementById('timer-display'), finalScore: document.getElementById('final-score'), specialAttackCharges: document.getElementById('special-attack-charges'), killCount: document.getElementById('kill-count-display') };
+            const displays = { 
+                stage: document.getElementById('stage-display'), 
+                monsters: document.getElementById('monster-count-display'), 
+                score: document.getElementById('score-display'), 
+                timer: document.getElementById('timer-display'), 
+                combo: document.getElementById('combo-display'),
+                finalScore: document.getElementById('final-score'), 
+                maxCombo: document.getElementById('max-combo'),
+                specialAttackCharges: document.getElementById('special-attack-charges'), 
+                killCount: document.getElementById('kill-count-display'),
+                targetMode: document.getElementById('target-mode'),
+                dps: document.getElementById('dps-display')
+            };
             const screens = { start: document.getElementById('start-screen'), over: document.getElementById('game-over-screen') };
-            const buttons = { start: document.getElementById('start-game-button'), restart: document.getElementById('restart-game-button'), specialAttack: document.getElementById('special-attack-button') };
+            const buttons = { 
+                start: document.getElementById('start-game-button'), 
+                restart: document.getElementById('restart-game-button'), 
+                specialAttack: document.getElementById('special-attack-button'),
+                target: document.getElementById('target-button')
+            };
 
             function showNotification(text, duration = 1500) {
                 notificationElement.textContent = text;
@@ -181,30 +398,64 @@
                 setTimeout(() => notificationElement.classList.remove('show'), duration);
             }
 
+            function showDamageIndicator(monster, damage) {
+                const indicator = document.createElement('div');
+                indicator.className = 'damage-indicator';
+                indicator.textContent = `-${damage}`;
+                indicator.style.left = monster.element.style.left;
+                indicator.style.top = monster.element.style.top;
+                monsterAreaElement.appendChild(indicator);
+                setTimeout(() => indicator.remove(), 1000);
+            }
+
+            function showComboIndicator(combo) {
+                if (combo <= 1) return;
+                const existing = document.querySelector('.combo-indicator');
+                if (existing) existing.remove();
+                
+                const indicator = document.createElement('div');
+                indicator.className = 'combo-indicator';
+                indicator.textContent = `${combo}x COMBO!`;
+                gameContainer.appendChild(indicator);
+                setTimeout(() => indicator.remove(), 2000);
+            }
+
             function updateGameState(newState) {
                 state.gameState = newState;
                 screens.start.classList.add('hidden');
                 screens.over.classList.add('hidden');
                 boardElement.style.pointerEvents = 'none';
-                clearTimeout(state.timers.hintTimeout); clearHint();
+                clearTimeout(state.timers.hintTimeout); 
+                clearHint();
+                
                 switch (newState) {
-                    case GAME_STATE.MENU: screens.start.classList.remove('hidden'); break;
-                    case GAME_STATE.PREPARATION: startPreparationPhase(); break;
-                    case GAME_STATE.ACTIVE: boardElement.style.pointerEvents = 'auto'; startStagePhase(); break;
+                    case GAME_STATE.MENU: 
+                        screens.start.classList.remove('hidden'); 
+                        break;
+                    case GAME_STATE.PREPARATION: 
+                        startPreparationPhase(); 
+                        break;
+                    case GAME_STATE.ACTIVE: 
+                        boardElement.style.pointerEvents = 'auto'; 
+                        startStagePhase(); 
+                        break;
                     case GAME_STATE.OVER:
                         clearInterval(state.timers.main);
                         displays.finalScore.textContent = state.score;
+                        displays.maxCombo.textContent = state.maxCombo;
                         screens.over.classList.remove('hidden');
                         break;
                 }
             }
 
             function startGame() {
-                state.currentStage = 1; state.score = 0; monsterAreaElement.innerHTML = '';
-                state.activeMonsters = []; state.monsterIdCounter = 0; displays.score.textContent = state.score;
+                state.currentStage = 1; state.score = 0; state.comboCount = 0; state.maxCombo = 0;
+                state.totalDamageDealt = 0; state.gameStartTime = Date.now();
+                monsterAreaElement.innerHTML = '';
+                state.activeMonsters = []; state.monsterIdCounter = 0; state.targetedMonster = null;
+                displays.score.textContent = state.score; displays.combo.textContent = state.comboCount;
                 state.specialAttackCharges = 0; state.killsForNextCharge = 0;
-                updateSpecialAttackButton();
-                updateDangerEffect();
+                updateSpecialAttackButton(); updateDangerEffect(); updateDPS();
                 updateGameState(GAME_STATE.PREPARATION);
             }
 
@@ -212,8 +463,7 @@
                 state.timers.prepSeconds = 10;
                 displays.stage.textContent = state.currentStage;
                 displays.timer.textContent = state.timers.prepSeconds;
-                initializeBoard();
-                renderBoard();
+                initializeBoard(); renderBoard();
                 clearInterval(state.timers.main);
                 state.timers.main = setInterval(() => {
                     state.timers.prepSeconds--;
@@ -228,12 +478,15 @@
                 state.timers.waveSeconds--;
                 displays.timer.textContent = state.timers.waveSeconds;
                 if (state.timers.waveSeconds <= 0) { goToNextStage(); return; }
+                
                 if (state.spawnedMonsterCount < 10) {
                     state.timers.spawnSeconds--;
                     if (state.timers.spawnSeconds <= 0) {
-                        state.timers.spawnSeconds = 2; spawnMonster(); state.spawnedMonsterCount++;
+                        state.timers.spawnSeconds = Math.max(1, 3 - Math.floor(state.currentStage / 3));
+                        spawnMonster(); state.spawnedMonsterCount++;
                     }
                 }
+                
                 if (!state.isSwapping) {
                     state.timers.idleSeconds++;
                     if (state.timers.idleSeconds >= 5 && state.hintCells.length === 0 && !state.timers.hintTimeout) {
@@ -243,37 +496,99 @@
             }
 
             function goToNextStage(isFirstStage = false) {
-                if (!isFirstStage) state.currentStage++;
-                showNotification(`Stage ${state.currentStage} 시작!`);
+                if (!isFirstStage) { 
+                    state.currentStage++; 
+                    state.comboCount = 0;
+                    displays.combo.textContent = state.comboCount;
+                }
+                showNotification(`🎯 Stage ${state.currentStage} 시작!`);
                 displays.stage.textContent = state.currentStage;
                 state.spawnedMonsterCount = 0;
                 state.timers.waveSeconds = 60;
-                state.timers.spawnSeconds = 2;
+                state.timers.spawnSeconds = Math.max(1, 3 - Math.floor(state.currentStage / 3));
                 displays.timer.textContent = state.timers.waveSeconds;
+                
                 if (isFirstStage) {
                     clearInterval(state.timers.main);
                     state.timers.main = setInterval(gameLoop, 1000);
                 }
             }
 
+            function getMonsterType(stageNum, spawnIndex) {
+                const rand = Math.random();
+                if (stageNum >= 5 && rand < 0.1) return 'FLYING';
+                if (stageNum >= 3 && rand < 0.15) return 'TANK';
+                if (stageNum >= 2 && rand < 0.2) return 'FAST';
+                return 'NORMAL';
+            }
+
             function spawnMonster() {
                 if (state.gameState === GAME_STATE.OVER) return;
                 state.monsterIdCounter++;
-                let hp;
-                if (state.spawnedMonsterCount < 5) {
-                    hp = state.currentStage;
-                } else {
-                    hp = Math.max(1, Math.floor(Math.random() * state.currentStage) + 1);
+                
+                const monsterType = getMonsterType(state.currentStage, state.spawnedMonsterCount);
+                const typeData = MONSTER_TYPES[monsterType];
+                
+                let hp = typeData.hp * Math.max(1, Math.floor(state.currentStage * 0.8) + 1);
+                if (state.spawnedMonsterCount >= 5) {
+                    hp = Math.max(1, Math.floor(Math.random() * hp) + 1);
                 }
-                const monster = { id: state.monsterIdCounter, hp: hp, maxHp: hp, element: document.createElement('div') };
-                monster.element.className = 'monster'; monster.element.textContent = hp;
-                monster.element.style.animationDelay = `-${Math.random() * 20}s`;
+                
+                const monster = { 
+                    id: state.monsterIdCounter, hp: hp, maxHp: hp, type: monsterType,
+                    element: document.createElement('div') 
+                };
+                
+                monster.element.className = `monster ${monsterType.toLowerCase()}`;
+                monster.element.innerHTML = `<span>${typeData.emoji}</span><br><small>${hp}</small>`;
+                monster.element.style.animationDelay = `-${Math.random() * typeData.speed}s`;
+                monster.element.dataset.monsterId = monster.id;
+                monster.element.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleTargetMonster(monster);
+                });
+                monster.element.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleTargetMonster(monster);
+                });
+                
                 state.activeMonsters.push(monster);
                 monsterAreaElement.appendChild(monster.element);
                 displays.monsters.textContent = state.activeMonsters.length;
                 updateDangerEffect();
+                
                 if (state.activeMonsters.length >= 20) {
                     updateGameState(GAME_STATE.OVER);
+                }
+            }
+
+            function toggleTargetMonster(monster) {
+                if (state.targetedMonster) {
+                    state.targetedMonster.element.classList.remove('targeted');
+                }
+                
+                if (state.targetedMonster === monster) {
+                    state.targetedMonster = null;
+                } else {
+                    state.targetedMonster = monster;
+                    monster.element.classList.add('targeted');
+                }
+            }
+
+            function getTargetMonster() {
+                if (state.targetedMonster && state.activeMonsters.includes(state.targetedMonster)) {
+                    return state.targetedMonster;
+                }
+                
+                if (state.activeMonsters.length === 0) return null;
+                
+                switch (state.targetMode) {
+                    case 0: return state.activeMonsters[0]; // 첫번째
+                    case 1: return state.activeMonsters.reduce((min, monster) => monster.hp < min.hp ? monster : min); // 막체력
+                    case 2: return state.activeMonsters.reduce((max, monster) => monster.hp > max.hp ? monster : max); // 최체력
+                    case 3: return state.activeMonsters[Math.floor(Math.random() * state.activeMonsters.length)]; // 랜덤
+                    default: return state.activeMonsters[0];
                 }
             }
             
@@ -294,6 +609,12 @@
                 buttons.specialAttack.disabled = state.specialAttackCharges <= 0;
             }
 
+            function updateDPS() {
+                const timeElapsed = (Date.now() - state.gameStartTime) / 1000;
+                const dps = timeElapsed > 0 ? Math.round(state.totalDamageDealt / timeElapsed * 10) / 10 : 0;
+                displays.dps.textContent = dps;
+            }
+
             function useSpecialAttack() {
                 if (state.specialAttackCharges <= 0 || state.isSwapping) return;
                 state.specialAttackCharges--;
@@ -302,7 +623,67 @@
                 gameContainer.classList.add('shake');
                 setTimeout(() => gameContainer.classList.remove('shake'), 500);
 
-                [...state.activeMonsters].forEach(monster => takeDamage(monster, 1));
+                showNotification('💥 필살기 발동!', 1000);
+                [...state.activeMonsters].forEach(monster => takeDamage(monster, 2, true));
+            }
+
+            function cycleTargetMode() {
+                state.targetMode = (state.targetMode + 1) % TARGET_MODES.length;
+                displays.targetMode.textContent = TARGET_MODES[state.targetMode];
+                if (state.targetedMonster) {
+                    state.targetedMonster.element.classList.remove('targeted');
+                    state.targetedMonster = null;
+                }
+            }
+
+            function createSpecialPiece(matchSize, centerX, centerY) {
+                if (matchSize >= 5) {
+                    return 'rainbow'; // 무지개 조각 (모든 색상과 매치)
+                } else if (matchSize === 4) {
+                    return Math.random() < 0.5 ? 'bomb' : 'lightning';
+                }
+                return null;
+            }
+
+            function activateSpecialPiece(type, x, y) {
+                const affectedCells = [];
+                
+                switch (type) {
+                    case 'bomb':
+                        // 3x3 폭발
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                const nx = x + dx;
+                                const ny = y + dy;
+                                if (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE) {
+                                    affectedCells.push({ x: nx, y: ny });
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'lightning':
+                        // 십자가 모양으로 제거
+                        for (let i = 0; i < BOARD_SIZE; i++) {
+                            affectedCells.push({ x: i, y: y }); // 가로줄
+                            affectedCells.push({ x: x, y: i }); // 세로줄
+                        }
+                        break;
+                        
+                    case 'rainbow':
+                        // 보드의 모든 일반 조각을 랜덤하게 제거
+                        const randomType = Math.floor(Math.random() * NUM_PIECE_TYPES);
+                        for (let py = 0; py < BOARD_SIZE; py++) {
+                            for (let px = 0; px < BOARD_SIZE; px++) {
+                                if (state.board[py][px] === randomType) {
+                                    affectedCells.push({ x: px, y: py });
+                                }
+                            }
+                        }
+                        break;
+                }
+                
+                return affectedCells;
             }
 
             function getMatchChains(board) {
@@ -322,6 +703,7 @@
                     }
                     return chain.length >= 3 ? chain : [];
                 };
+                
                 for (let y = 0; y < BOARD_SIZE; y++) {
                     for (let x = 0; x < BOARD_SIZE; x++) {
                         const horizontal = checkMatch(x, y, 1, 0);
@@ -330,6 +712,7 @@
                         if (vertical.length >= 3) matches.push(vertical);
                     }
                 }
+                
                 const uniqueMatches = []; const matchedCoords = new Set();
                 for (const match of matches) {
                     const isNewMatch = match.some(p => !matchedCoords.has(`${p.x},${p.y}`));
@@ -390,6 +773,7 @@
                     }, 750);
                 }
             }
+            
             function clearHint() {
                 state.hintCells.forEach(cell => {
                     cell?.classList.remove('hint-swap');
@@ -402,7 +786,7 @@
 
             async function shuffleBoard() {
                 state.isSwapping = true; clearHint();
-                showNotification("매치 가능한 블록이 없습니다! 셔플!", 2000);
+                showNotification("🔄 매치 가능한 블록이 없습니다! 셔플!", 2000);
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 initializeBoard(); renderBoard(); state.isSwapping = false;
             }
@@ -413,25 +797,43 @@
                 const create = () => Array.from({length: BOARD_SIZE}, () => Array.from({length: BOARD_SIZE}, getRandomPieceType));
                 const hasMatches = (b) => getMatchChains(b).length > 0;
                 do { state.board = create(); } while (hasMatches(state.board));
-                if (state.gameState === GAME_STATE.ACTIVE && !checkForPossibleMoves()) setTimeout(shuffleBoard, 500);
+                if (state.gameState === GAME_STATE.ACTIVE && !checkForPossibleMoves()) {
+                    setTimeout(shuffleBoard, 500);
+                }
             }
             
             function renderBoard() {
                 boardElement.innerHTML = '';
                 state.board.forEach((row, y) => row.forEach((type, x) => {
                     const cell = document.createElement('div');
-                    cell.className = 'cell'; cell.dataset.x = x; cell.dataset.y = y;
-                    cell.dataset.type = type; cell.draggable = true;
+                    cell.className = 'cell'; 
+                    cell.dataset.x = x; 
+                    cell.dataset.y = y;
+                    cell.dataset.type = type; 
+                    
+                    // 터치 디바이스가 아닐 때만 draggable 설정
+                    if (!state.isTouchDevice) {
+                        cell.draggable = true;
+                    }
+                    
+                    // 터치 이벤트를 위한 설정
+                    cell.style.touchAction = 'manipulation';
+                    
                     boardElement.appendChild(cell);
                 }));
+                
+                // 선택 상태 복원 방지를 위해 선택 해제
+                clearSelection();
             }
             
             async function swapPieces(x1, y1, x2, y2) {
                 if (state.isSwapping) return;
                 state.isSwapping = true; clearHint();
+                
                 const tempBoard = state.board.map(r => [...r]);
                 [tempBoard[y1][x1], tempBoard[y2][x2]] = [tempBoard[y2][x2], tempBoard[y1][x1]];
                 const matches = getMatchChains(tempBoard);
+                
                 if (matches.length > 0) {
                     state.board = tempBoard;
                     const c1 = document.querySelector(`.cell[data-x='${x1}'][data-y='${y1}']`);
@@ -445,86 +847,373 @@
 
             async function processMatches(initialMatches) {
                 let currentMatches = initialMatches;
+                let chainCount = 0;
+                
                 while (currentMatches.length > 0) {
+                    chainCount++;
                     let totalMatchedPieces = new Set();
-                    currentMatches.forEach(match => match.forEach(p => totalMatchedPieces.add(`${p.x},${p.y}`)));
-                    applyMatchDamage(totalMatchedPieces.size);
+                    let specialPieces = [];
+                    
+                    currentMatches.forEach(match => {
+                        match.forEach(p => totalMatchedPieces.add(`${p.x},${p.y}`));
+                        
+                        // 4개 이상 매치 시 특수 조각 생성 확률
+                        if (match.length >= 4) {
+                            const centerIndex = Math.floor(match.length / 2);
+                            const centerPiece = match[centerIndex];
+                            const specialType = createSpecialPiece(match.length, centerPiece.x, centerPiece.y);
+                            if (specialType) {
+                                specialPieces.push({ x: centerPiece.x, y: centerPiece.y, type: specialType });
+                            }
+                        }
+                    });
+
+                    // 콤보 시스템
+                    state.comboCount = chainCount;
+                    if (state.comboCount > state.maxCombo) {
+                        state.maxCombo = state.comboCount;
+                    }
+                    displays.combo.textContent = state.comboCount;
+                    
+                    if (chainCount > 1) {
+                        showComboIndicator(chainCount);
+                    }
+
+                    applyMatchDamage(totalMatchedPieces.size, chainCount);
+                    
+                    // 특수 조각 활성화 체크
+                    const specialActivations = [];
                     totalMatchedPieces.forEach(coordStr => {
-                        const [x, y] = coordStr.split(',');
+                        const [x, y] = coordStr.split(',').map(Number);
+                        const cellType = state.board[y][x];
+                        
+                        if (['bomb', 'lightning', 'rainbow'].includes(cellType)) {
+                            const affected = activateSpecialPiece(cellType, x, y);
+                            specialActivations.push(...affected);
+                        }
+                        
                         document.querySelector(`.cell[data-x='${x}'][data-y='${y}']`)?.classList.add('matched');
                         state.board[y][x] = null;
                     });
+                    
+                    // 특수 조각 효과 적용
+                    specialActivations.forEach(pos => {
+                        if (state.board[pos.y] && state.board[pos.y][pos.x] !== null) {
+                            totalMatchedPieces.add(`${pos.x},${pos.y}`);
+                            document.querySelector(`.cell[data-x='${pos.x}'][data-y='${pos.y}']`)?.classList.add('matched');
+                            state.board[pos.y][pos.x] = null;
+                        }
+                    });
+
                     await new Promise(r => setTimeout(r, 300));
                     applyGravity();
+                    
+                    // 특수 조각들을 보드에 배치
+                    specialPieces.forEach(special => {
+                        if (state.board[special.y][special.x] === null) {
+                            state.board[special.y][special.x] = special.type;
+                        }
+                    });
+                    
                     fillBoard();
                     renderBoard();
                     await new Promise(r => setTimeout(r, 300));
                     currentMatches = getMatchChains(state.board);
                 }
+                
+                // 매치 체인이 끝나면 콤보 리셋
+                setTimeout(() => {
+                    state.comboCount = 0;
+                    displays.combo.textContent = state.comboCount;
+                }, 1000);
+                
                 if (!checkForPossibleMoves()) shuffleBoard();
             }
             
             function applyGravity() {
-                for(let x=0; x<BOARD_SIZE; x++){ let empty=BOARD_SIZE-1; for(let y=BOARD_SIZE-1; y>=0; y--){
-                if(state.board[y][x]!==null){ if(y!==empty){[state.board[empty][x],state.board[y][x]]=[state.board[y][x],null];} empty--; } } }
+                for(let x = 0; x < BOARD_SIZE; x++) { 
+                    let empty = BOARD_SIZE - 1; 
+                    for(let y = BOARD_SIZE - 1; y >= 0; y--) {
+                        if(state.board[y][x] !== null) { 
+                            if(y !== empty) {
+                                [state.board[empty][x], state.board[y][x]] = [state.board[y][x], null];
+                            } 
+                            empty--; 
+                        } 
+                    } 
+                }
             }
-            function fillBoard() { for (let y=0;y<BOARD_SIZE;y++) for(let x=0;x<BOARD_SIZE;x++) if(state.board[y][x]===null) state.board[y][x]=getRandomPieceType(); }
             
-            function applyMatchDamage(count) {
-                let damage=0; if (count===3) damage=1; else if (count===4) damage=2; else if (count>=5) damage=4;
-                if (damage>0 && state.activeMonsters.length>0) takeDamage(state.activeMonsters[0], damage);
+            function fillBoard() { 
+                for (let y = 0; y < BOARD_SIZE; y++) {
+                    for (let x = 0; x < BOARD_SIZE; x++) {
+                        if (state.board[y][x] === null) {
+                            state.board[y][x] = getRandomPieceType();
+                        }
+                    }
+                }
+            }
+            
+            function applyMatchDamage(pieceCount, comboMultiplier = 1) {
+                let baseDamage = 0;
+                if (pieceCount === 3) baseDamage = 1;
+                else if (pieceCount === 4) baseDamage = 2;
+                else if (pieceCount >= 5) baseDamage = 4;
+                else if (pieceCount > 6) baseDamage = Math.floor(pieceCount / 2);
+                
+                let totalDamage = Math.max(1, baseDamage * comboMultiplier);
+                
+                if (totalDamage > 0 && state.activeMonsters.length > 0) {
+                    const target = getTargetMonster();
+                    if (target) {
+                        takeDamage(target, totalDamage);
+                    }
+                }
             }
 
-            function takeDamage(monster, damage) {
+            function takeDamage(monster, damage, isSpecialAttack = false) {
+                if (!monster || !state.activeMonsters.includes(monster)) return;
+                
                 monster.hp -= damage;
+                state.totalDamageDealt += damage;
+                updateDPS();
+                
+                if (!isSpecialAttack) {
+                    showDamageIndicator(monster, damage);
+                }
+                
                 if (monster.hp <= 0) {
                     monster.element.remove();
                     state.activeMonsters = state.activeMonsters.filter(m => m.id !== monster.id);
+                    if (state.targetedMonster === monster) {
+                        state.targetedMonster = null;
+                    }
+                    
                     state.score++;
                     state.killsForNextCharge++;
                     if (state.killsForNextCharge >= 10) {
                         state.specialAttackCharges++;
                         state.killsForNextCharge -= 10;
+                        showNotification('💥 필살기 충전 완료!', 1000);
                     }
                     updateSpecialAttackButton();
                     displays.score.textContent = state.score;
                     displays.monsters.textContent = state.activeMonsters.length;
                     updateDangerEffect();
+                    
                     if (state.activeMonsters.length === 0 && state.spawnedMonsterCount >= 10) {
-                        goToNextStage();
+                        setTimeout(() => goToNextStage(), 1000);
                     }
                 } else {
-                    monster.element.textContent = monster.hp;
                     const healthPercent = Math.max(0, monster.hp / monster.maxHp);
+                    const typeData = MONSTER_TYPES[monster.type];
+                    monster.element.innerHTML = `<span>${typeData.emoji}</span><br><small>${monster.hp}</small>`;
                     monster.element.style.backgroundColor = `hsl(120, 100%, ${20 + healthPercent * 30}%)`;
                 }
             }
             
-            function getRandomPieceType() { return Math.floor(Math.random() * NUM_PIECE_TYPES); }
+            function clearSelection() {
+                if (state.selectedCell) {
+                    state.selectedCell.classList.remove('selected');
+                    const indicator = state.selectedCell.querySelector('.swap-indicator');
+                    if (indicator) indicator.remove();
+                    state.selectedCell = null;
+                }
+                
+                state.possibleSwaps.forEach(cell => {
+                    cell.classList.remove('possible-swap');
+                });
+                state.possibleSwaps = [];
+            }
 
-            boardElement.addEventListener('dragstart', (e) => {
-                if(state.gameState!==GAME_STATE.ACTIVE || state.isSwapping || !e.target.classList.contains('cell')) return;
-                clearHint(); state.draggedCell = e.target; setTimeout(() => e.target.classList.add('dragging'), 0);
-            });
-            boardElement.addEventListener('dragend', (e) => {
-                if (!state.draggedCell) return;
-                state.draggedCell.classList.remove('dragging'); state.draggedCell = null;
-            });
-            boardElement.addEventListener('dragover', (e) => e.preventDefault());
-            boardElement.addEventListener('drop', (e) => {
-                e.preventDefault(); const droppedOnCell = e.target.closest('.cell');
-                if (!state.draggedCell || !droppedOnCell || droppedOnCell === state.draggedCell || state.isSwapping) return;
-                const x1=parseInt(state.draggedCell.dataset.x), y1=parseInt(state.draggedCell.dataset.y);
-                const x2=parseInt(droppedOnCell.dataset.x), y2=parseInt(droppedOnCell.dataset.y);
-                if (Math.abs(x1-x2)+Math.abs(y1-y2) === 1) swapPieces(x1, y1, x2, y2);
-            });
+            function selectCell(cell) {
+                if (state.gameState !== GAME_STATE.ACTIVE || state.isSwapping) return;
+                
+                clearSelection();
+                clearHint();
+                
+                state.selectedCell = cell;
+                cell.classList.add('selected');
+                
+                // 선택 표시 추가
+                const indicator = document.createElement('div');
+                indicator.className = 'swap-indicator';
+                indicator.textContent = '1';
+                cell.appendChild(indicator);
+                
+                // 인접한 셀들 찾기
+                const x = parseInt(cell.dataset.x);
+                const y = parseInt(cell.dataset.y);
+                
+                const adjacentPositions = [
+                    { x: x - 1, y: y }, { x: x + 1, y: y },
+                    { x: x, y: y - 1 }, { x: x, y: y + 1 }
+                ];
+                
+                adjacentPositions.forEach(pos => {
+                    if (pos.x >= 0 && pos.x < BOARD_SIZE && pos.y >= 0 && pos.y < BOARD_SIZE) {
+                        const adjacentCell = document.querySelector(`.cell[data-x='${pos.x}'][data-y='${pos.y}']`);
+                        if (adjacentCell) {
+                            adjacentCell.classList.add('possible-swap');
+                            state.possibleSwaps.push(adjacentCell);
+                        }
+                    }
+                });
+                
+                showNotification('인접한 블록을 선택하세요', 1000);
+            }
 
+            function handleCellClick(cell) {
+                if (state.gameState !== GAME_STATE.ACTIVE || state.isSwapping) return;
+                
+                // 이미 선택된 셀을 다시 클릭한 경우
+                if (state.selectedCell === cell) {
+                    clearSelection();
+                    return;
+                }
+                
+                // 선택된 셀이 없는 경우
+                if (!state.selectedCell) {
+                    selectCell(cell);
+                    return;
+                }
+                
+                // 인접한 셀을 클릭한 경우
+                if (state.possibleSwaps.includes(cell)) {
+                    const x1 = parseInt(state.selectedCell.dataset.x);
+                    const y1 = parseInt(state.selectedCell.dataset.y);
+                    const x2 = parseInt(cell.dataset.x);
+                    const y2 = parseInt(cell.dataset.y);
+                    
+                    clearSelection();
+                    swapPieces(x1, y1, x2, y2);
+                } else {
+                    // 인접하지 않은 셀을 클릭한 경우, 새로운 셀 선택
+                    selectCell(cell);
+                }
+            }
+
+            function getRandomPieceType() { 
+                // 5% 확률로 특수 조각 생성 (스테이지가 높아질수록 확률 증가)
+                const specialChance = Math.min(0.15, 0.05 + state.currentStage * 0.01);
+                if (Math.random() < specialChance && state.gameState === GAME_STATE.ACTIVE) {
+                    const specials = ['bomb', 'lightning'];
+                    if (state.currentStage >= 3) specials.push('rainbow');
+                    return specials[Math.floor(Math.random() * specials.length)];
+                }
+                return Math.floor(Math.random() * NUM_PIECE_TYPES); 
+            }
+
+            // 터치 및 마우스 이벤트 통합 처리
+            function addUniversalEventListeners() {
+                // 게임 보드 이벤트
+                boardElement.addEventListener('click', (e) => {
+                    const cell = e.target.closest('.cell');
+                    if (cell && state.isTouchDevice) {
+                        e.preventDefault();
+                        handleCellClick(cell);
+                    }
+                });
+
+                // 터치 이벤트 (모바일)
+                boardElement.addEventListener('touchstart', (e) => {
+                    const cell = e.target.closest('.cell');
+                    if (cell) {
+                        e.preventDefault();
+                        handleCellClick(cell);
+                    }
+                });
+
+                // 드래그 앤 드롭 이벤트 (데스크톱)
+                if (!state.isTouchDevice) {
+                    boardElement.addEventListener('dragstart', (e) => {
+                        if(state.gameState !== GAME_STATE.ACTIVE || state.isSwapping || !e.target.classList.contains('cell')) return;
+                        clearHint(); 
+                        clearSelection(); 
+                        state.draggedCell = e.target; 
+                        setTimeout(() => e.target.classList.add('dragging'), 0);
+                    });
+                    
+                    boardElement.addEventListener('dragend', (e) => {
+                        if (!state.draggedCell) return;
+                        state.draggedCell.classList.remove('dragging'); 
+                        state.draggedCell = null;
+                    });
+                    
+                    boardElement.addEventListener('dragover', (e) => e.preventDefault());
+                    
+                    boardElement.addEventListener('drop', (e) => {
+                        e.preventDefault(); 
+                        const droppedOnCell = e.target.closest('.cell');
+                        if (!state.draggedCell || !droppedOnCell || droppedOnCell === state.draggedCell || state.isSwapping) return;
+                        
+                        const x1 = parseInt(state.draggedCell.dataset.x), y1 = parseInt(state.draggedCell.dataset.y);
+                        const x2 = parseInt(droppedOnCell.dataset.x), y2 = parseInt(droppedOnCell.dataset.y);
+                        if (Math.abs(x1-x2) + Math.abs(y1-y2) === 1) {
+                            clearSelection();
+                            swapPieces(x1, y1, x2, y2);
+                        }
+                    });
+                }
+
+                // 몬스터 클릭/터치 이벤트
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('.monster')) {
+                        const monsterId = parseInt(e.target.closest('.monster').dataset.monsterId);
+                        const monster = state.activeMonsters.find(m => m.id === monsterId);
+                        if (monster) toggleTargetMonster(monster);
+                    }
+                });
+
+                document.addEventListener('touchstart', (e) => {
+                    if (e.target.closest('.monster')) {
+                        e.preventDefault();
+                        const monsterId = parseInt(e.target.closest('.monster').dataset.monsterId);
+                        const monster = state.activeMonsters.find(m => m.id === monsterId);
+                        if (monster) toggleTargetMonster(monster);
+                    }
+                });
+            }
+
+            // 이벤트 리스너들
             buttons.start.addEventListener('click', startGame);
             buttons.restart.addEventListener('click', startGame);
             buttons.specialAttack.addEventListener('click', useSpecialAttack);
-            document.getElementById('timer-display').addEventListener('click', () => {
-                 if(state.gameState === GAME_STATE.PREPARATION) { updateGameState(GAME_STATE.ACTIVE); }
+            buttons.target.addEventListener('click', cycleTargetMode);
+            
+            // 터치 지원을 위한 추가 이벤트
+            buttons.specialAttack.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                useSpecialAttack();
             });
+            
+            buttons.target.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                cycleTargetMode();
+            });
+            
+            document.getElementById('timer-display').addEventListener('click', () => {
+                if(state.gameState === GAME_STATE.PREPARATION) { 
+                    updateGameState(GAME_STATE.ACTIVE); 
+                }
+            });
+
+            // 화면 밖 클릭 시 선택 해제
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('#game-board') && !e.target.closest('.monster')) {
+                    clearSelection();
+                }
+            });
+
+            document.addEventListener('touchstart', (e) => {
+                if (!e.target.closest('#game-board') && !e.target.closest('.monster')) {
+                    clearSelection();
+                }
+            });
+            
+            // 통합 이벤트 리스너 등록
+            addUniversalEventListeners();
+            
             updateGameState(GAME_STATE.MENU);
         });
     </script>
